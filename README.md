@@ -1,2 +1,2 @@
 # kr-solutions
-Solutions to exercises in The C Programming Language (K&amp;R 1988)
+These are my solutions to the exercises found in *The C Programming Language* (Second Edition), also known as K&amp;R.
