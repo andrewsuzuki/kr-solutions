@@ -24,4 +24,6 @@ int main(void) {
 		printf("%7.0f %10.1f\n", celsius, fahr);
 		celsius = celsius + step;
 	}
+
+	return 0;
 }
