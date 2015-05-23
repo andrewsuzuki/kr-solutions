@@ -1,7 +1,7 @@
 /*
- * Filename:	cel-to-fahr.c
+ * Filename:	temp-reverse-for.c
  * Author:	Andrew Suzuki <andrew.b.suzuki@gmail.com>
- * Date:	05/21/2015
+ * Date:	05/22/2015
  *
  * Exercise 1-5. Modify the temperature conversion program to print
  * the table in reverse order, that is, from 300 degrees to 0.
