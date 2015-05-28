@@ -1,7 +1,7 @@
 /*
  * Filename:	squeeze.c
  * Author:	Andrew Suzuki <andrew.b.suzuki@gmail.com>
- * Date:	05/26/2015
+ * Date:	05/27/2015
  *
  * Exercise 2-4. Write an alternative version of squeeze(s1,s2) that deletes
  * each character in s1 that matches any character in the string s2.
