@@ -1,34 +1,38 @@
 /*
- * Filename:	calc-trig.c
+ * Filename:	ungets.c
  * Author:	Andrew Suzuki <andrew.b.suzuki@gmail.com>
- * Date:	05/30/2015
+ * Date:	05/31/2015
  *
- * Exercise 4-5. Add access to library functions like sin, exp, and pow.
- * See <math.h> in Appendix B, Section 4.
+ * Exercise 4-7. Write a routine ungets(s) that will push back an entire string
+ * onto the input. Should ungets know about buf and bufp, or should
+ * it just use ungetch?
  */
 
 #include <stdio.h>
 #include <stdlib.h> /* for atof() */
 #include <math.h> /* for fmod() */
 #include <ctype.h>
+#include <string.h> /* for strcmp() */
 
 #define MAXOP	100 /* max size of operand or operator */
 #define NUMBER	'0' /* signal that a number was found */
+#define UNKNOWN 'u' /* signal for unknown command */
 
 #define SIN	330
 #define COS	331
 #define TAN	332
 #define EXP	340
 #define POW	350
+#define GET	400
+#define SET	401
 
 int getop(char []);
-int stackcount(void);
+int count(void);
 void push(double);
 double pop(void);
-double stacklast(void);
-void stackdup(void);
-void stackswap(void);
-void stackclear(void);
+double last(void);
+double getvar(char var);
+void setvar(char var, double value);
 
 int main(void) {
 	int type;
@@ -84,23 +88,17 @@ int main(void) {
 				else
 					push(pow(op1, op2));
 				break;
-			case 'P':
-				printf("%f\n", stacklast());
+			case GET:
+				push(getvar(s[0]));
 				break;
-			case 'D':
-				stackdup();
-				break;
-			case 'S':
-				stackswap();
-				break;
-			case 'C':
-				stackclear();
-				printf("stack cleared\n");
+			case SET:
+				setvar(s[0], last());
 				break;
 			case '\n':
-				if (stackcount() > 0)
-					printf("\t%.8g\n", stacklast());
+				if (count() > 0)
+					printf("\t%.8g\n", last());
 				break;
+			case UNKNOWN:
 			default:
 				printf("error: unknown command %s\n", s);
 				break;
@@ -113,127 +111,113 @@ int main(void) {
 #define MAXVAL 100
 
 int sp = 0; /* next free stack position */
-double val[MAXVAL]; /* the stack */
+double stack[MAXVAL]; /* the stack */
 
-/* stackcount: count elements in stack */
-int stackcount(void) {
+/* count: count elements in stack */
+int count(void) {
 	return sp;
 }
 
 /* push: push f onto value stack */
 void push(double f) {
 	if (sp < MAXVAL)
-		val[sp++] = f;
+		stack[sp++] = f;
 	else
 		printf("error: stack full, can't push %g\n", f);
 }
 
 /* pop: pop and return top value from stack */
 double pop(void) {
-	if (stackcount() > 0)
-		return val[--sp];
+	if (count() > 0)
+		return stack[--sp];
 	else {
 		printf("error: stack empty @ pop\n");
 		return 0.0;
 	}
 }
 
-/* stackdup: duplicate top value of stack */
-void stackdup(void) {
-	if (stackcount() > 0)
-		push(stacklast());
-	else
-		printf("error: stack empty @ stackdup\n");
-}
-
-/* stackswap: swap top two elements of stack */
-void stackswap(void) {
-	double top, bot;
-	if (stackcount() > 1) {
-		top = pop();
-		bot = pop();
-		push(top);
-		push(bot);
-	} else
-		printf("error: stack needs at least 2 elements\n");
-}
-
-/* stackclear: clear the stack */
-void stackclear(void) {
-	while (stackcount() > 0)
-		val[--sp] = 0.0;
-}
-
-/* stacklast: return top value of stack w/o popping */
-double stacklast(void) {
-	if (stackcount() > 0)
-		return val[sp-1];
+/* last: return top value of stack w/o popping */
+double last(void) {
+	if (count() > 0)
+		return stack[sp-1];
 	else {
 		printf("error: stack empty @ stacklast\n");
 		return 0.0;
 	}
 }
 
+#define N_VARS 26
+
+double vars[N_VARS];
+
+double getvar(char v) {
+	return vars[v - 'a'];
+}
+
+void setvar(char v, double val) {
+	vars[v - 'A'] = val;
+}
+
 #include <ctype.h>
 
 int getch(void);
 void ungetch(int);
+void ungets(char string[]);
 
 /* getop: get next operator or numberic operand */
 int getop(char s[]) {
-	int i, c, th[3];
+	int i, c;
 
 	/* skip blanks/tabs */
 	while ((s[0] = c = getch()) == ' ' || c == '\t');
 
 	s[1] = '\0';
-	if (!isdigit(c) && c != '.' && c != '-') {
-		th[0] = c;
-		if (th[0] == '\n') {
-			return c;
-		}
 
-		th[1] = getch();
-		if (th[1] == '\n') {
-			ungetch('\n');
-			return th[0];
-		}
+	if (c == '\n' || c == EOF)
+		return c;
 
-		th[2] = getch();
-		if (th[2] == '\n') {
-			ungetch(th[1]);
-			ungetch('\n');
-			return th[0];
-		}
-
-		if (isalpha(th[0]) && isalpha(th[1]) && isalpha(th[2])) {
-			if (th[0] == 's' && th[1] == 'i' && th[2] == 'n')
-				return SIN;
-			else if (th[0] == 'c' && th[1] == 'o' && th[2] == 's')
-				return COS;
-			else if (th[0] == 't' && th[1] == 'a' && th[2] == 'n')
-				return TAN;
-			else if (th[0] == 'e' && th[1] == 'x' && th[2] == 'p')
-				return EXP;
-			else if (th[0] == 'p' && th[1] == 'o' && th[2] == 'w')
-				return POW;
-		}
-
-		ungetch(th[1]);
-		ungetch(th[2]);
-		return c; /* not a number, nor 3-letter cmd */
-	}
 	i = 0;
-	if (c == '-')
-		s[++i] = c = getch();
-	if (isdigit(c)) /* collect integer part */
-		while (isdigit(s[++i] = c = getch()));
-	if (c == '.')
-		while (isdigit(s[++i] = c = getch()));
-	s[i] = '\0';
-	if (c != EOF)
+
+	if (isalpha(c)) {
+		while (isalpha(s[++i] = c = getch()));
+		/* undo side effects */
 		ungetch(c);
-	return NUMBER;
+		s[i] = '\0';
+		/* match to command or variable */
+		if (i > 1) {
+			/* probably command */
+			if (strcmp(s, "sin") == 0)
+				return SIN;
+			else if (strcmp(s, "cos") == 0)
+				return COS;
+			else if (strcmp(s, "tan") == 0)
+				return TAN;
+			else if (strcmp(s, "exp") == 0)
+				return EXP;
+			else if (strcmp(s, "pow") == 0)
+				return POW;
+			else
+				return UNKNOWN;
+		} else {
+			/* probably var */
+			if (islower(s[0]))
+				return GET;
+			else
+				return SET;
+		}
+	} else if (isdigit(c)) {
+		/* collect integer part */
+		while (isdigit(s[++i] = c = getch()));
+		if (c == '.')
+			while (isdigit(s[++i] = c = getch()));
+		/* undo side effects */
+		ungetch(c);
+		s[i] = '\0';
+		/* return */
+		return NUMBER;
+	}
+
+	return c;
 }
 
 #define BUFSIZE 100
@@ -246,9 +230,14 @@ int getch(void) { /* get a (possibly pushed back) character */
 }
 
 void ungetch(int c) { /* push character back on input */
-	//printf("ungetching %c\n", c);
 	if (bufp >= BUFSIZE)
 		printf("ungetch: too many characters\n");
 	else
 		buf[bufp++] = c;
+}
+
+void ungets(char s[]) { /* push string back on input */
+	int i;
+	for (i = 0; s[i] != '\0'; i++)
+		ungetch(s[i]);
 }
