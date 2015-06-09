@@ -1,7 +1,7 @@
 /*
  * Filename:	getword.c
  * Author:		Andrew Suzuki <andrew.b.suzuki@gmail.com>
- * Date:		06/01/2015
+ * Date:		06/08/2015
  *
  * Exercise 6-1. Our version of getword does not properly handle
  * underscores, string constants, comments, or preprocessor
@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdbool.h>
 #include "getch.h"
 
 #define MAXWORD 100
@@ -38,9 +37,6 @@ struct key {
 
 int getword(char *, int);
 int binsearch(char *, struct key *, int);
-
-int in_comment = false;
-int in_pre = false;
 
 int main(void) {
 	int n;
