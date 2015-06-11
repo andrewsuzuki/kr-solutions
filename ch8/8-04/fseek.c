@@ -1,15 +1,18 @@
 /*
- * Filename:    fopen.c
+ * Filename:    fseek.c
  * Author:      Andrew Suzuki <andrew.b.suzuki@gmail.com>
  * Date:        06/11/2015
  *
- * Exercise 8-2. Rewrite fopen and _fillbuf with fields instead of
- * explicit bit operations. Compare code size and execution speed.
+ * Exercise 8-4. The standard library function
+ *     int fseek(FILE *fp, long offset, int origin)
+ * is identical to lseek except that fp is a file pointer instead of a file
+ * descriptor and the return value is an int status, not a position. Write
+ * fseek. Make sure that your fseek coordinates properly with the buffering
+ * done for the other functions of the library.
  *
  * ---
- *
- * Note: in order to test fopen and _fillbuf, I had to write _flushbuf
- * from the next exercise, which is found below and in the 8-03 dir.
+ * 
+ * meh, only kinda sorta works. will fix.
  */
 
 #include <fcntl.h>
@@ -51,8 +54,11 @@ extern FILE _iob[OPEN_MAX];
 #define stderr  (&_iob[2])
 
 FILE *fopen(char *name, char *mode);
-int _fillbuf(FILE *);
-int _flushbuf(int, FILE *);
+int fflush(FILE *fp);
+int fclose(FILE *fp);
+int fseek(FILE *fp, long offset, int origin);
+int _fillbuf(FILE *fp);
+int _flushbuf(int, FILE *fp);
 
 #define feof(p)     ((p)->ff.eof)
 #define ferror(p)   ((p)->ff.err)
@@ -71,11 +77,22 @@ FILE _iob[OPEN_MAX] = {     /* stdin, stdout, stderr */
         { 0, (char *) 0, (char *) 0, {0,1,1,0,0}, 2 }
 };
 
+#define LINES_TO_TEST 3
+
 int main(int argc, char *argv[])
 {
+    /* test for closing file, should seek to beginning after 5 lines */
+
     int c;
-    while ((c = getchar()) != EOF) {
+    int nlines = 1;
+    FILE *opened = fopen("fseek.c", "r");
+
+    while ((c = getc(opened)) != EOF) {
         putchar(c);
+        if (nlines == LINES_TO_TEST) {
+            fseek(opened, 1, 1);
+        }
+        if (c == '\n') nlines++;
     }
 }
 
@@ -212,4 +229,84 @@ int _flushbuf(int c, FILE *f) {
         f->ff.err = 1;
         return EOF;
     }
+}
+
+/* forces write of output buffer / discards input buffer. If NULL, flush all output streams */
+int fflush(FILE *fp)
+{
+    int i, ok;
+
+    if (fp == NULL) {
+        /* recursively flush each output buffer */
+        ok = 0;
+        for (i = 0; i < OPEN_MAX; i++)
+            if ((_iob + i)->ff.write == 1 && fflush((_iob + i)) == EOF)
+                ok = EOF;
+        return ok;
+    } else {
+        if (fp->ff.write == 0)
+            return EOF; /* only flush output streams */
+
+        _flushbuf(EOF, fp); /* flush buffer */
+
+        if (fp->ff.err == 1) /* check for errors */
+            return EOF;
+
+        return 0;
+    }
+}
+
+int fclose(FILE *fp)
+{
+    int fd;
+
+    if (fp == NULL)
+        return EOF;
+
+    fflush(fp);
+
+    fd = fp->fd;
+    fp->fd = 0;
+    fp->cnt = 0;
+    fp->ptr = NULL;
+    /* free flags (important, this
+    is how it determines if it can be reopened) */
+    reset_ff(&(fp->ff));
+    /* free buffer */
+    if (fp->base != NULL)
+        free(fp->base);
+    fp->base = NULL;
+
+    return close(fd);
+}
+
+/* fseek: seeks to offset from origin (0/1/2), returns 0 on success */
+/* adapted from answer on clcwiki.net */
+int fseek(FILE *fp, long offset, int origin)
+{
+    int res;
+
+    if (fp->ff.unbuf == 0 && fp->base != NULL) {
+        if (fp->ff.write) {
+            if (fflush(fp))
+                return EOF;
+        } else if (fp->ff.read) {
+            if (origin == 1) {
+                if (offset >= 0 && offset <= fp->cnt) {
+                    fp->cnt -= offset;
+                    fp->ptr += offset;
+                    fp->ff.eof = 0;
+                    return 0;
+                } else {
+                    offset -= fp->cnt;
+                }
+            }
+            fp->cnt = 0;
+            fp->ptr = fp->base;
+        }
+    }
+    res = (lseek(fp->fd, offset, origin) < 0);
+    if (res == 0)
+        fp->ff.eof = 0;
+    return res;
 }

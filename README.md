@@ -13,7 +13,7 @@ Exercises per chapter:
 * ch5: 20 -- need 17 through 20
 * ch6: 6 ✓
 * ch7: 9 ✓
-* ch8: 8 -- need 2 through 8
+* ch8: 8 -- need 5 through 8
 
 ## Contributors
 
