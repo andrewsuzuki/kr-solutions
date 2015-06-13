@@ -1,14 +1,15 @@
 /*
- * Filename:    calloc.c
+ * Filename:    malloc-safer.c
  * Author:      Andrew Suzuki <andrew.b.suzuki@gmail.com>
  * Date:        06/12/2015
  *
- * Exercise 8-6. The standard library function callloc(n,size) returns a
- * pointer to n objects of size size, with the storage initialized to
- * zero. Write calloc, by calling malloc or by modifying it.
+ * Exercise 8-7. malloc accepts a size request without checking its plausibility;
+ * free believes that the block it is asked to free contains a valid size field.
+ * Improve these routines so they take more pains with error checking.
  */
 
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
  
@@ -31,6 +32,9 @@ static Header *freep = NULL;
 void my_free(void *ap)
 {
     Header *bp, *p;
+
+    if (ap == NULL)
+        return;
 
     bp = (Header *)ap - 1; /* point to block header */
     for (p = freep; !(bp > p) && bp < p->s.ptr; p = p->s.ptr) {
@@ -86,6 +90,9 @@ void *my_malloc(unsigned nbytes)
     Header *p, *prevp;
     unsigned nunits;
 
+    if (nbytes == 0)
+        return NULL;
+
     nunits = (nbytes + sizeof(Header) - 1) / sizeof(Header) + 1;
     if ((prevp = freep) == NULL) { /* no free list yet */
         base.s.ptr = freep = prevp = &base;
@@ -114,24 +121,9 @@ void *my_malloc(unsigned nbytes)
     }
 }
 
-void *my_calloc(unsigned nobj, unsigned nbytes)
-{
-    int i;
-    Align *beg = my_malloc(nobj * nbytes);
-    if (beg == NULL)
-        return NULL;
-    for (i = 0; i < nobj * nbytes; i++)
-        beg[i] = 0;
-    return (void *) beg;
-}
-
-#define NTEST 3
-
 int main(int argc, char *argv[])
 {
-    char *all = (char *) my_calloc(NTEST, sizeof(char));
-    int i;
-    for (i = 0; i < NTEST; i++)
-        printf("%d\n", all[i]);
+    assert(my_malloc(0) == NULL);
+    assert(my_malloc(1) != NULL);
     return 0;
 }

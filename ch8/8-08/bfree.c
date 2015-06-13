@@ -1,14 +1,16 @@
 /*
- * Filename:    calloc.c
+ * Filename:    bfree.c
  * Author:      Andrew Suzuki <andrew.b.suzuki@gmail.com>
  * Date:        06/12/2015
  *
- * Exercise 8-6. The standard library function callloc(n,size) returns a
- * pointer to n objects of size size, with the storage initialized to
- * zero. Write calloc, by calling malloc or by modifying it.
+ * Exercise 8-8. Write a routine bfree(p,n) that will free an arbitrary
+ * block p of n characters into the free list maintained by malloc and
+ * free. By using bfree, a user can add a static or external array
+ * to the free list at any time.
  */
 
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
  
@@ -32,6 +34,9 @@ void my_free(void *ap)
 {
     Header *bp, *p;
 
+    if (ap == NULL)
+        return;
+
     bp = (Header *)ap - 1; /* point to block header */
     for (p = freep; !(bp > p) && bp < p->s.ptr; p = p->s.ptr) {
         if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) {
@@ -54,6 +59,20 @@ void my_free(void *ap)
     }
 
     freep = p;
+}
+
+void bfree(void *p, unsigned n)
+{
+    Header *q = (Header *) p;
+    unsigned nu = n / sizeof(Header);
+    if (nu <= 1)
+        return;
+    if (freep == NULL) {
+        base.s.ptr = freep = &base;
+        base.s.size = 0;
+    }
+    q->s.size = nu;
+    my_free((void *)(q + 1));
 }
 
 #define NALLOC 1024 /* minimum #units to request */
@@ -86,6 +105,9 @@ void *my_malloc(unsigned nbytes)
     Header *p, *prevp;
     unsigned nunits;
 
+    if (nbytes == 0)
+        return NULL;
+
     nunits = (nbytes + sizeof(Header) - 1) / sizeof(Header) + 1;
     if ((prevp = freep) == NULL) { /* no free list yet */
         base.s.ptr = freep = prevp = &base;
@@ -114,24 +136,7 @@ void *my_malloc(unsigned nbytes)
     }
 }
 
-void *my_calloc(unsigned nobj, unsigned nbytes)
+int main(void)
 {
-    int i;
-    Align *beg = my_malloc(nobj * nbytes);
-    if (beg == NULL)
-        return NULL;
-    for (i = 0; i < nobj * nbytes; i++)
-        beg[i] = 0;
-    return (void *) beg;
-}
-
-#define NTEST 3
-
-int main(int argc, char *argv[])
-{
-    char *all = (char *) my_calloc(NTEST, sizeof(char));
-    int i;
-    for (i = 0; i < NTEST; i++)
-        printf("%d\n", all[i]);
-    return 0;
+    return 0; 
 }
